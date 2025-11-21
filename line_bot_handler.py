@@ -672,6 +672,19 @@ class LineBotHandler:
                             events = filtered_events
                             print(f"[DEBUG] 終日マーカーを除いた予定を使用: {len(events)}件")
                         
+                        # 「休み」チェック: タイトルに「休み」が含まれている予定がある日は空き時間を出さない
+                        has_rest_day = False
+                        for event in all_events:
+                            event_title = event.get('title', '')
+                            if '休み' in event_title:
+                                has_rest_day = True
+                                print(f"[DEBUG] 日付{i+1}に「休み」を含む予定を発見: {event}")
+                                break
+                        
+                        if has_rest_day:
+                            print(f"[DEBUG] 日付{i+1}は「休み」のため空き時間をスキップ")
+                            continue
+                        
                         # 10:00〜19:00の間で空き時間を返す
                         day_start = "10:00"
                         day_end = "19:00"
