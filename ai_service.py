@@ -151,6 +151,41 @@ class AIService:
         for d in parsed['dates']:
             print(f"[DEBUG] datesループ: {d}")
             phrase = d.get('description', '') or original_text
+            
+            # 空き時間確認の場合、時間が明示的に指定されていない場合は10:00-19:00に設定
+            if parsed.get('task_type') == 'availability_check':
+                # 元のテキストに時間の明示的な指定があるかチェック
+                has_explicit_time = bool(
+                    re.search(r'(\d{1,2})[\-〜~](\d{1,2})時', original_text) or  # X時-Y時
+                    re.search(r'(\d{1,2})時以降', original_text) or  # X時以降
+                    re.search(r'(\d{1,2}):(\d{2})[\-〜~]', original_text)  # HH:MM形式の範囲
+                )
+                
+                # 時間が明示的に指定されていない場合、10:00-19:00に設定
+                if not has_explicit_time:
+                    current_time = d.get('time', '')
+                    current_end_time = d.get('end_time', '')
+                    
+                    # 時間が16時以降の場合は現在時刻の可能性が高いため、10:00に設定
+                    if current_time and ':' in current_time:
+                        try:
+                            hour = int(current_time.split(':')[0])
+                            if hour >= 16:
+                                d['time'] = '10:00'
+                                print(f"[DEBUG] 空き時間確認で時間が不適切なため、10:00に設定（元の値: {current_time}）")
+                        except:
+                            pass
+                    
+                    # 時間が未設定の場合は10:00に設定
+                    if not d.get('time'):
+                        d['time'] = '10:00'
+                        print(f"[DEBUG] 空き時間確認で時間が未設定のため、10:00に設定")
+                    
+                    # 終了時間が未設定または23:59の場合は19:00に設定
+                    if not current_end_time or current_end_time == '23:59':
+                        d['end_time'] = '19:00'
+                        print(f"[DEBUG] 空き時間確認で終了時間が不適切なため、19:00に設定（元の値: {current_end_time}）")
+            
             # time, end_timeが両方セットされていれば何もしない
             if d.get('time') and d.get('end_time'):
                 new_dates.append(d)
